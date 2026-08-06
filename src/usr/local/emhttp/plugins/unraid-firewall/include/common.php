@@ -12,6 +12,15 @@ const RULES4_FILE = CONFIG_DIR . '/ipv4.rules';
 const RULES6_FILE = CONFIG_DIR . '/ipv6.rules';
 const STATE_FILE = '/var/run/unraid-firewall.status';
 
+function translateText(string $text): string
+{
+    if (function_exists('_')) {
+        return (string) \_($text);
+    }
+
+    return $text;
+}
+
 function defaultConfig(): array
 {
     return [
