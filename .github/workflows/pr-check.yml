@@ -11,7 +11,7 @@ on:
       version:
         description: Version to validate and release
         required: true
-        default: '2026.08.06.0008'
+        default: '2026.08.06.0009'
 
 permissions:
   contents: read

@@ -68,7 +68,7 @@ The WebUI uses Unraid's standard language-file mechanism and follows the locale 
 ./build.ps1
 ```
 
-The build creates `unraid-firewall-<version>-noarch-1.txz` and a SHA256 sidecar. Pull requests run GitHub Actions checks for PHP, WebUI rendering, shell syntax, metadata, and package structure. Pushing a date-version tag such as `2026.08.06.0008` (or the equivalent `v2026.08.06.0008`) runs the release workflow, which builds the package, calculates its SHA256, generates the final `.plg`, and publishes a GitHub Release.
+The build creates `unraid-firewall-<version>-noarch-1.txz` and a SHA256 sidecar. Pull requests run GitHub Actions checks for PHP, WebUI rendering, shell syntax, metadata, and package structure. Pushing a date-version tag such as `2026.08.06.0009` (or the equivalent `v2026.08.06.0009`) runs the release workflow, which builds the package, calculates its SHA256, generates the final `.plg`, and publishes a GitHub Release.
 
 The checked-in `plugin/unraid-firewall.plg` is a release template. Install the generated `unraid-firewall.plg` from a GitHub Release.
 
