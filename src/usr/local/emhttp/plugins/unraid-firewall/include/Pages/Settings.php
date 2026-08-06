@@ -122,7 +122,7 @@ $displayRules6 = $rules6 === [] ? [$emptyRule] : $rules6;
                     </table>
                 </div>
                 <button type="button" class="ufw-secondary" onclick="addRuleRow('ipv4')"><?= html(translateText('Add IPv4 rule')) ?></button>
-                <p class="ufw-help"><?= html(translateText('Rules are evaluated top-to-bottom. Leave source blank for any source. Leave port blank for all ports; a port requires TCP or UDP.')) ?></p>
+                <p class="ufw-help"><?= html(translateText('Rules are evaluated top-to-bottom. Leave source blank for any source. Leave port blank for all ports. A port requires TCP or UDP.')) ?></p>
             </section>
 
             <section class="ufw-group">
@@ -164,7 +164,7 @@ $displayRules6 = $rules6 === [] ? [$emptyRule] : $rules6;
                     </table>
                 </div>
                 <button type="button" class="ufw-secondary" onclick="addRuleRow('ipv6')"><?= html(translateText('Add IPv6 rule')) ?></button>
-                <p class="ufw-help"><?= html(translateText('Use IPv6 addresses or CIDRs. Leave source blank for any source. Leave port blank for all ports; a port requires TCP or UDP.')) ?></p>
+                <p class="ufw-help"><?= html(translateText('Use IPv6 addresses or CIDRs. Leave source blank for any source. Leave port blank for all ports. A port requires TCP or UDP.')) ?></p>
             </section>
         </div>
 

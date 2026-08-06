@@ -63,7 +63,7 @@ WebUI 使用 Unraid 标准的语言文件机制，并跟随 Unraid 中选择的�
 ./build.ps1
 ```
 
-构建会生成 `unraid-firewall-<version>-noarch-1.txz` 及 SHA256 文件。Pull Request 会通过 GitHub Actions 检查 PHP、WebUI 渲染、Shell、元数据和安装包结构。推送日期版本标签（例如 `2026.08.06.0009`，也支持 `v2026.08.06.0009`）后，流水线会自动构建安装包、计算 SHA256、生成最终 `.plg` 并创建 GitHub Release。仓库中的 `plugin/unraid-firewall.plg` 是发布模板，安装时使用 Release 中生成的 `unraid-firewall.plg`。
+构建会生成 `unraid-firewall-<version>-noarch-1.txz` 及 SHA256 文件。Pull Request 会通过 GitHub Actions 检查 PHP、WebUI 渲染、Shell、元数据和安装包结构。推送日期版本标签（例如 `2026.08.06.0010`，也支持 `v2026.08.06.0010`）后，流水线会自动构建安装包、计算 SHA256、生成最终 `.plg` 并创建 GitHub Release。仓库中的 `plugin/unraid-firewall.plg` 是发布模板，安装时使用 Release 中生成的 `unraid-firewall.plg`。
 
 ## 诊断
 
