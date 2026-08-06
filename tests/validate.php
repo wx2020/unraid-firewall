@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../src/usr/local/emhttp/plugins/unraid-firewall/include/common.php';
+
+use function UnraidFirewall\normalizeRuleRecord;
+use function UnraidFirewall\serializeRuleRecords;
+
+$ipv4 = normalizeRuleRecord([
+    'name' => 'Management Web UI',
+    'action' => 'allow',
+    'source' => '192.168.1.0/24',
+    'protocol' => 'tcp',
+    'port' => '5000',
+], 4);
+if ($ipv4['port'] !== '5000' || $ipv4['protocol'] !== 'tcp') {
+    throw new RuntimeException('IPv4 named rule was not normalized as expected.');
+}
+
+$ipv6 = normalizeRuleRecord([
+    'name' => 'IPv6 range',
+    'action' => 'deny',
+    'source' => '2001:db8::/32',
+    'protocol' => 'udp',
+    'port' => '5000-5010',
+], 6);
+if ($ipv6['port'] !== '5000-5010' || $ipv6['action'] !== 'deny') {
+    throw new RuntimeException('IPv6 named rule was not normalized as expected.');
+}
+
+$serialized = serializeRuleRecords([$ipv4, $ipv6]);
+if ($serialized !== "Management Web UI|allow|192.168.1.0/24|tcp|5000\nIPv6 range|deny|2001:db8::/32|udp|5000-5010\n") {
+    throw new RuntimeException('Named rule serialization did not match.');
+}
+
+$failed = false;
+try {
+    normalizeRuleRecord([
+        'name' => 'Invalid port protocol',
+        'action' => 'allow',
+        'source' => '',
+        'protocol' => 'any',
+        'port' => '5000',
+    ], 4);
+} catch (InvalidArgumentException $exception) {
+    $failed = true;
+}
+if (!$failed) {
+    throw new RuntimeException('Any-protocol port validation did not fail.');
+}
+
+echo "Rule validation tests passed.\n";

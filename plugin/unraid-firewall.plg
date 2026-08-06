@@ -1,0 +1,99 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN>
+
+<PLUGIN
+  name="unraid-firewall"
+  author="wx2020"
+  version="2026.08.06.0003"
+  launch="Settings/UnraidFirewall"
+  pluginURL="https://github.com/wx2020/unraid-firewall/releases/latest/download/unraid-firewall.plg"
+  support="https://github.com/wx2020/unraid-firewall/issues"
+  min="6.12.0"
+>
+
+<CHANGES>
+<![CDATA[
+
+### 2026.08.06.0003
+
+- Added named IPv4/IPv6 rules with TCP/UDP destination port and port-range matching.
+- Matched Docker bridge published ports using the original destination port after DNAT.
+
+### 2026.08.06.0002
+
+- Added Docker bridge inbound filtering through the Docker-managed DOCKER-USER chain.
+- Preserved container egress and unrelated host forwarding by scoping rules to Docker interfaces.
+
+### 2026.08.06.0001
+
+- Initial release.
+- Added WebUI controls for the global policy and separate IPv4/IPv6 groups.
+- Added default allow/deny behavior and source IP/CIDR rules.
+- Added dedicated iptables and ip6tables chains with safe cleanup on removal.
+
+]]>
+</CHANGES>
+
+<!--
+  This source template contains a release placeholder. GitHub Actions replaces
+  it with the package SHA256 and publishes the installable .plg with the
+  versioned release assets.
+-->
+<FILE Name="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0003-noarch-1.txz">
+<URL>https://github.com/wx2020/unraid-firewall/releases/download/2026.08.06.0003/unraid-firewall-2026.08.06.0003-noarch-1.txz</URL>
+<SHA256>REPLACE_WITH_RELEASE_SHA256</SHA256>
+</FILE>
+
+<FILE Run="/bin/bash">
+<INLINE>
+<![CDATA[
+set -e
+
+PKG="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0003-noarch-1.txz"
+if [ ! -f "$PKG" ]; then
+    echo "unraid-firewall package was not downloaded: $PKG"
+    exit 1
+fi
+
+TMP_DIR="$(mktemp -d /tmp/unraid-firewall-install.XXXXXX)"
+cleanup() {
+    rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
+
+tar --xz -xf "$PKG" -C "$TMP_DIR"
+[ ! -d "$TMP_DIR/etc" ] || cp -a "$TMP_DIR/etc/." /etc/
+[ ! -d "$TMP_DIR/usr" ] || cp -a "$TMP_DIR/usr/." /usr/
+
+if [ -f "$TMP_DIR/install/doinst.sh" ]; then
+    /bin/bash "$TMP_DIR/install/doinst.sh"
+fi
+
+/etc/rc.d/rc.unraid-firewall apply || true
+
+# Keep the flash directory from accumulating old package versions.
+find /boot/config/plugins/unraid-firewall -maxdepth 1 -type f -name '*.txz' \
+    ! -name "$(basename "$PKG")" -delete 2>/dev/null || true
+]]>
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+<![CDATA[
+if [ -x /etc/rc.d/rc.unraid-firewall ]; then
+    /etc/rc.d/rc.unraid-firewall stop || true
+fi
+
+rm -f /usr/local/emhttp/plugins/unraid-firewall/event/array_started
+rm -f /usr/local/emhttp/plugins/unraid-firewall/event/docker_started
+rm -f /etc/rc.d/rc.unraid-firewall
+rm -rf /usr/local/emhttp/plugins/unraid-firewall
+rm -rf /usr/local/etc/rc.d/rc.unraid-firewall
+rm -rf /var/local/emhttp/plugins/unraid-firewall
+rm -rf /var/log/unraid-firewall.log /var/run/unraid-firewall.status
+]]>
+</INLINE>
+</FILE>
+
+</PLUGIN>

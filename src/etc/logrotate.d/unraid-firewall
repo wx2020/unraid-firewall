@@ -1,0 +1,8 @@
+/var/log/unraid-firewall.log {
+    weekly
+    rotate 4
+    missingok
+    notifempty
+    compress
+    copytruncate
+}
