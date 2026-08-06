@@ -1,11 +1,55 @@
 # unraid-firewall
 
-`unraid-firewall` is a small Unraid plugin for controlling host inbound traffic from the WebUI.
+[中文文档](README_CN.md)
 
-It provides separate IPv4 and IPv6 groups, group enable switches, per-group default allow/deny behavior, and named rules with action, source IP/CIDR, protocol, and destination port/range. Rules are evaluated top-to-bottom. Rules are installed in plugin-owned `UNRAID_FIREWALL4` and `UNRAID_FIREWALL6` chains, plus plugin-owned chains hooked from Docker's `DOCKER-USER` chain.
+A lightweight inbound firewall plugin for Unraid, with separate IPv4 and IPv6 policy groups managed from the WebUI.
 
-The plugin manages host `INPUT` traffic and Docker bridge forwarding through `DOCKER-USER`. Docker interface patterns are scoped so container egress, container-to-container traffic, and unrelated host forwarding are not blocked by a deny-by-default Docker group. Host-network containers are covered by `INPUT`; macvlan/ipvlan and other non-bridge drivers are not guaranteed to use `DOCKER-USER`.
+## Features
 
-The initial configuration is disabled and defaults to allow unmatched sources to avoid locking out the WebUI during installation. Add the management source first, then enable a deny-by-default group when using an allowlist.
+- Global switch to enable or disable the plugin policy.
+- Independent IPv4 and IPv6 switches.
+- Per-group default allow/deny behavior for sources that do not match a rule.
+- IPv4 and IPv6 address or CIDR support, such as `192.168.1.0/24` and `fd00::/8`.
+- Named rules with allow/deny action, source IP/CIDR, protocol, and destination port or port range, such as TCP `5000` or `5000-5010`.
+- Blank source means any source. Blank port means all ports for the selected protocol.
+- Rules are evaluated from top to bottom.
+- Host inbound traffic is handled by plugin-owned `UNRAID_FIREWALL4` and `UNRAID_FIREWALL6` chains.
+- Docker bridge published-port traffic is handled through plugin-owned chains hooked from Docker's `DOCKER-USER` chain.
+- Docker forwarding rules are scoped to Docker bridge interfaces, preserving container egress, container-to-container traffic, and unrelated host forwarding.
+- Rules are applied immediately when saved; plugin installation, array startup, Docker startup, and removal reapply or clean up the policy.
 
-Build the package with `build.sh`, `build.ps1`, or `make`. Pull requests run the package, PHP, WebUI, shell, and metadata checks. Pushing a date-version tag such as `2026.08.06.0003` (or the equivalent `v2026.08.06.0003`) runs the GitHub Actions release job, which builds the package, calculates its SHA256, generates the final `.plg`, and publishes the GitHub Release. The checked-in `plugin/unraid-firewall.plg` is a release template; install the generated `unraid-firewall.plg` from a Release.
+The plugin filters host `INPUT` traffic and Docker bridge published ports through `DOCKER-USER`. Host-network containers are covered by `INPUT`; macvlan/ipvlan and other non-bridge networks are not guaranteed to use `DOCKER-USER`. A Docker `DOCKER-USER` chain must exist for Docker forwarding rules to be applied. Docker userland-proxy traffic is covered by the host `INPUT` rules.
+
+## Usage
+
+1. Open **Settings → Unraid Firewall** in Unraid.
+2. Add a rule name, source IP/CIDR, protocol, and port. Add the management source first.
+3. Enable the relevant IPv4/IPv6 group and the global policy switch.
+4. For an allowlist, disable **Default allow inbound** for the relevant group.
+5. Click **Apply settings**.
+
+The plugin is disabled on first installation. Both protocol groups default to allowing unmatched sources to help prevent locking out the management WebUI.
+
+## Build and release
+
+```bash
+./build.sh
+# or Windows PowerShell
+./build.ps1
+```
+
+The build creates `unraid-firewall-<version>-noarch-1.txz` and a SHA256 sidecar. Pull requests run GitHub Actions checks for PHP, WebUI rendering, shell syntax, metadata, and package structure. Pushing a date-version tag such as `2026.08.06.0003` (or the equivalent `v2026.08.06.0003`) runs the release workflow, which builds the package, calculates its SHA256, generates the final `.plg`, and publishes a GitHub Release.
+
+The checked-in `plugin/unraid-firewall.plg` is a release template. Install the generated `unraid-firewall.plg` from a GitHub Release.
+
+## Diagnostics
+
+```bash
+/etc/rc.d/rc.unraid-firewall status
+/etc/rc.d/rc.unraid-firewall apply
+tail -f /var/log/unraid-firewall.log
+iptables -S UNRAID_FIREWALL4
+ip6tables -S UNRAID_FIREWALL6
+iptables -S DOCKER-USER
+ip6tables -S DOCKER-USER
+```
