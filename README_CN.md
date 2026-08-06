@@ -51,6 +51,10 @@
 
 插件首次安装默认关闭，且两个协议组默认允许未匹配来源，以避免安装后意外锁定管理页面。
 
+## 语言
+
+WebUI 使用 Unraid 标准的语言文件机制，并跟随 Unraid 中选择的语言。英文源 key 位于 `src/usr/local/emhttp/languages/en_US/unraidfirewall.txt`，插件内置简体中文翻译文件 `src/usr/local/emhttp/languages/zh_CN/unraidfirewall.txt`。
+
 ## 构建
 
 ```bash
@@ -59,7 +63,7 @@
 ./build.ps1
 ```
 
-构建会生成 `unraid-firewall-<version>-noarch-1.txz` 及 SHA256 文件。Pull Request 会通过 GitHub Actions 检查 PHP、WebUI 渲染、Shell、元数据和安装包结构。推送日期版本标签（例如 `2026.08.06.0006`，也支持 `v2026.08.06.0006`）后，流水线会自动构建安装包、计算 SHA256、生成最终 `.plg` 并创建 GitHub Release。仓库中的 `plugin/unraid-firewall.plg` 是发布模板，安装时使用 Release 中生成的 `unraid-firewall.plg`。
+构建会生成 `unraid-firewall-<version>-noarch-1.txz` 及 SHA256 文件。Pull Request 会通过 GitHub Actions 检查 PHP、WebUI 渲染、Shell、元数据和安装包结构。推送日期版本标签（例如 `2026.08.06.0007`，也支持 `v2026.08.06.0007`）后，流水线会自动构建安装包、计算 SHA256、生成最终 `.plg` 并创建 GitHub Release。仓库中的 `plugin/unraid-firewall.plg` 是发布模板，安装时使用 Release 中生成的 `unraid-firewall.plg`。
 
 ## 诊断
 

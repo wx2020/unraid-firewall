@@ -11,7 +11,7 @@ on:
       version:
         description: Version to validate and release
         required: true
-        default: '2026.08.06.0006'
+        default: '2026.08.06.0007'
 
 permissions:
   contents: read
@@ -81,6 +81,8 @@ jobs:
           test -f package/usr/local/etc/rc.d/rc.unraid-firewall
           test -f package/usr/local/emhttp/plugins/unraid-firewall/UnraidFirewall.page
           test -f package/usr/local/emhttp/plugins/unraid-firewall/include/apply.php
+          test -f package/usr/local/emhttp/languages/en_US/unraidfirewall.txt
+          test -f package/usr/local/emhttp/languages/zh_CN/unraidfirewall.txt
 
       - name: Check whitespace
         shell: bash
