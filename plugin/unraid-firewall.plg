@@ -4,7 +4,7 @@
 <PLUGIN
   name="unraid-firewall"
   author="wx2020"
-  version="2026.08.06.0005"
+  version="2026.08.06.0006"
   launch="Settings/UnraidFirewall"
   pluginURL="https://github.com/wx2020/unraid-firewall/releases/latest/download/unraid-firewall.plg"
   support="https://github.com/wx2020/unraid-firewall/issues"
@@ -13,6 +13,10 @@
 
 <CHANGES>
 <![CDATA[
+
+### 2026.08.06.0006
+
+- Made the firewall settings panels use the full available width with a responsive two-column layout.
 
 ### 2026.08.06.0005
 
@@ -47,8 +51,8 @@
   it with the package SHA256 and publishes the installable .plg with the
   versioned release assets.
 -->
-<FILE Name="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0005-noarch-1.txz">
-<URL>https://github.com/wx2020/unraid-firewall/releases/download/2026.08.06.0005/unraid-firewall-2026.08.06.0005-noarch-1.txz</URL>
+<FILE Name="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0006-noarch-1.txz">
+<URL>https://github.com/wx2020/unraid-firewall/releases/download/2026.08.06.0006/unraid-firewall-2026.08.06.0006-noarch-1.txz</URL>
 <SHA256>REPLACE_WITH_RELEASE_SHA256</SHA256>
 </FILE>
 
@@ -57,7 +61,7 @@
 <![CDATA[
 set -e
 
-PKG="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0005-noarch-1.txz"
+PKG="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0006-noarch-1.txz"
 if [ ! -f "$PKG" ]; then
     echo "unraid-firewall package was not downloaded: $PKG"
     exit 1

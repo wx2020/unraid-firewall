@@ -1,5 +1,7 @@
 .ufw-page {
-    max-width: 1100px;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
 }
 
 .ufw-notice {
@@ -17,12 +19,13 @@
 
 .ufw-groups {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
     margin-top: 18px;
 }
 
 .ufw-group {
+    min-width: 0;
     padding: 16px 18px 18px;
     border: 1px solid rgba(128, 128, 128, 0.35);
     border-radius: 5px;
