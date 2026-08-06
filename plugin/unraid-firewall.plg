@@ -4,7 +4,7 @@
 <PLUGIN
   name="unraid-firewall"
   author="wx2020"
-  version="2026.08.06.0008"
+  version="2026.08.06.0009"
   launch="Settings/UnraidFirewall"
   pluginURL="https://github.com/wx2020/unraid-firewall/releases/latest/download/unraid-firewall.plg"
   support="https://github.com/wx2020/unraid-firewall/issues"
@@ -13,6 +13,10 @@
 
 <CHANGES>
 <![CDATA[
+
+### 2026.08.06.0009
+
+- Clear cached Unraid translation data when installing or removing the plugin.
 
 ### 2026.08.06.0008
 
@@ -59,8 +63,8 @@
   it with the package SHA256 and publishes the installable .plg with the
   versioned release assets.
 -->
-<FILE Name="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0008-noarch-1.txz">
-<URL>https://github.com/wx2020/unraid-firewall/releases/download/2026.08.06.0008/unraid-firewall-2026.08.06.0008-noarch-1.txz</URL>
+<FILE Name="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0009-noarch-1.txz">
+<URL>https://github.com/wx2020/unraid-firewall/releases/download/2026.08.06.0009/unraid-firewall-2026.08.06.0009-noarch-1.txz</URL>
 <SHA256>REPLACE_WITH_RELEASE_SHA256</SHA256>
 </FILE>
 
@@ -69,7 +73,7 @@
 <![CDATA[
 set -e
 
-PKG="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0008-noarch-1.txz"
+PKG="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.06.0009-noarch-1.txz"
 if [ ! -f "$PKG" ]; then
     echo "unraid-firewall package was not downloaded: $PKG"
     exit 1
@@ -84,6 +88,11 @@ trap cleanup EXIT
 tar --xz -xf "$PKG" -C "$TMP_DIR"
 [ ! -d "$TMP_DIR/etc" ] || cp -a "$TMP_DIR/etc/." /etc/
 [ ! -d "$TMP_DIR/usr" ] || cp -a "$TMP_DIR/usr/." /usr/
+
+# Unraid caches parsed language files as .dot files. Remove stale copies so
+# updated translation keys are loaded on the next page request.
+rm -f /usr/local/emhttp/languages/en_US/unraidfirewall.dot
+rm -f /usr/local/emhttp/languages/zh_CN/unraidfirewall.dot
 
 if [ -f "$TMP_DIR/install/doinst.sh" ]; then
     /bin/bash "$TMP_DIR/install/doinst.sh"
@@ -109,6 +118,8 @@ rm -f /usr/local/emhttp/plugins/unraid-firewall/event/array_started
 rm -f /usr/local/emhttp/plugins/unraid-firewall/event/docker_started
 rm -f /usr/local/emhttp/languages/en_US/unraidfirewall.txt
 rm -f /usr/local/emhttp/languages/zh_CN/unraidfirewall.txt
+rm -f /usr/local/emhttp/languages/en_US/unraidfirewall.dot
+rm -f /usr/local/emhttp/languages/zh_CN/unraidfirewall.dot
 rm -f /etc/rc.d/rc.unraid-firewall
 rm -rf /usr/local/emhttp/plugins/unraid-firewall
 rm -rf /usr/local/etc/rc.d/rc.unraid-firewall

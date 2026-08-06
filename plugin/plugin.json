@@ -1,7 +1,7 @@
 {
     "name": "unraid-firewall",
     "author": "wx2020",
-    "version": "2026.08.06.0008",
+    "version": "2026.08.06.0009",
     "description": "A simple IPv4/IPv6 inbound firewall policy plugin for Unraid",
     "launch": "Settings/UnraidFirewall",
     "category": "Network",
