@@ -20,6 +20,32 @@ A lightweight inbound firewall plugin for Unraid, with separate IPv4 and IPv6 po
 
 The plugin filters host `INPUT` traffic and Docker bridge published ports through `DOCKER-USER`. Host-network containers are covered by `INPUT`; macvlan/ipvlan and other non-bridge networks are not guaranteed to use `DOCKER-USER`. A Docker `DOCKER-USER` chain must exist for Docker forwarding rules to be applied. Docker userland-proxy traffic is covered by the host `INPUT` rules.
 
+## Installation
+
+### Method 1: Install from the plugin URL (recommended)
+
+1. In Unraid, open **Settings > Plugins > Install Plugin**.
+2. Paste the latest-release plugin URL:
+
+`https://github.com/wx2020/unraid-firewall/releases/latest/download/unraid-firewall.plg`
+
+3. Select **Install** and wait for the installation to complete.
+
+### Method 2: Manual installation
+
+1. Open the [latest release](https://github.com/wx2020/unraid-firewall/releases/latest).
+2. Download the `unraid-firewall.plg` release asset.
+3. In Unraid, open **Settings > Plugins > Install Plugin**.
+4. Upload the downloaded `unraid-firewall.plg` file and select **Install**.
+
+This URL always installs the most recently published plugin release. Changes
+merged to `main` are not available through this URL until the **Build and
+Release** workflow publishes a new release.
+
+The `plugin/unraid-firewall.plg` file in the source tree is a release template.
+Its package checksum is replaced by the release workflow, so the template
+itself is not an installable release artifact.
+
 ## Usage
 
 1. Open **Settings → Unraid Firewall** in Unraid.

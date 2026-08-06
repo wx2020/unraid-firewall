@@ -17,6 +17,30 @@
 
 插件过滤主机的 `INPUT` 链，以及 Docker bridge 发布端口经过的 `DOCKER-USER` 路径。host 网络容器仍属于主机 `INPUT`；macvlan/ipvlan 等非 bridge 网络不保证经过 Docker 的 `DOCKER-USER`。
 
+## 安装
+
+### 方法一：通过插件 URL 安装（推荐）
+
+1. 在 Unraid 中打开 **Settings > Plugins > Install Plugin**。
+2. 粘贴最新版本的插件 URL：
+
+`https://github.com/wx2020/unraid-firewall/releases/latest/download/unraid-firewall.plg`
+
+3. 选择 **Install**，等待安装完成。
+
+### 方法二：手动安装
+
+1. 打开[最新版本](https://github.com/wx2020/unraid-firewall/releases/latest)。
+2. 下载 Release 附件中的 `unraid-firewall.plg`。
+3. 在 Unraid 中打开 **Settings > Plugins > Install Plugin**。
+4. 上传下载的 `unraid-firewall.plg` 文件，然后选择 **Install**。
+
+上述 URL 始终安装最近发布的插件版本。合并到 `main` 的更改只有在
+**Build and Release** 工作流发布新版本后，才会通过此 URL 提供。
+
+源码中的 `plugin/unraid-firewall.plg` 是发布模板。软件包校验和会由发布
+工作流替换，因此该模板本身不能作为插件安装。
+
 ## 使用
 
 1. 在 **Settings → Unraid Firewall** 打开 WebUI。
