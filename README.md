@@ -48,7 +48,7 @@ itself is not an installable release artifact.
 
 ## Usage
 
-1. Open **Settings → Unraid Firewall** in Unraid.
+1. Open **Settings → Network Services → Unraid Firewall** in Unraid.
 2. Add a rule name, source IP/CIDR, protocol, and port. Add the management source first.
 3. Enable the relevant IPv4/IPv6 group and the global policy switch.
 4. For an allowlist, disable **Default allow inbound** for the relevant group.
@@ -64,7 +64,7 @@ The plugin is disabled on first installation. Both protocol groups default to al
 ./build.ps1
 ```
 
-The build creates `unraid-firewall-<version>-noarch-1.txz` and a SHA256 sidecar. Pull requests run GitHub Actions checks for PHP, WebUI rendering, shell syntax, metadata, and package structure. Pushing a date-version tag such as `2026.08.06.0004` (or the equivalent `v2026.08.06.0004`) runs the release workflow, which builds the package, calculates its SHA256, generates the final `.plg`, and publishes a GitHub Release.
+The build creates `unraid-firewall-<version>-noarch-1.txz` and a SHA256 sidecar. Pull requests run GitHub Actions checks for PHP, WebUI rendering, shell syntax, metadata, and package structure. Pushing a date-version tag such as `2026.08.06.0005` (or the equivalent `v2026.08.06.0005`) runs the release workflow, which builds the package, calculates its SHA256, generates the final `.plg`, and publishes a GitHub Release.
 
 The checked-in `plugin/unraid-firewall.plg` is a release template. Install the generated `unraid-firewall.plg` from a GitHub Release.
 

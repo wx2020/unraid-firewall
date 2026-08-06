@@ -1,4 +1,4 @@
-Menu="Settings"
+Menu="NetworkServices"
 Title="Unraid Firewall"
 Type="xmenu"
 Markdown="false"

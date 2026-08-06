@@ -43,7 +43,7 @@
 
 ## 使用
 
-1. 在 **Settings → Unraid Firewall** 打开 WebUI。
+1. 在 **Settings → Network Services → Unraid Firewall** 打开 WebUI。
 2. 添加规则名称、来源 IP/CIDR、协议和端口；先把管理端来源加入对应组。
 3. 打开 IPv4/IPv6 组开关和全局开关。
 4. 如果需要白名单模式，关闭对应的“默认允许未匹配来源”开关。
@@ -59,7 +59,7 @@
 ./build.ps1
 ```
 
-构建会生成 `unraid-firewall-<version>-noarch-1.txz` 及 SHA256 文件。Pull Request 会通过 GitHub Actions 检查 PHP、WebUI 渲染、Shell、元数据和安装包结构。推送日期版本标签（例如 `2026.08.06.0004`，也支持 `v2026.08.06.0004`）后，流水线会自动构建安装包、计算 SHA256、生成最终 `.plg` 并创建 GitHub Release。仓库中的 `plugin/unraid-firewall.plg` 是发布模板，安装时使用 Release 中生成的 `unraid-firewall.plg`。
+构建会生成 `unraid-firewall-<version>-noarch-1.txz` 及 SHA256 文件。Pull Request 会通过 GitHub Actions 检查 PHP、WebUI 渲染、Shell、元数据和安装包结构。推送日期版本标签（例如 `2026.08.06.0005`，也支持 `v2026.08.06.0005`）后，流水线会自动构建安装包、计算 SHA256、生成最终 `.plg` 并创建 GitHub Release。仓库中的 `plugin/unraid-firewall.plg` 是发布模板，安装时使用 Release 中生成的 `unraid-firewall.plg`。
 
 ## 诊断
 
