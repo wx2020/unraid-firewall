@@ -64,6 +64,7 @@ jobs:
           find src -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           php tests/validate.php
           php tests/render-pages.php
+          php tests/translation-keys.php
           while IFS= read -r -d '' file; do
             bash -n "$file"
           done < <(find src -type f \( -name '*.sh' -o -name 'rc.unraid-firewall' \) -print0)
