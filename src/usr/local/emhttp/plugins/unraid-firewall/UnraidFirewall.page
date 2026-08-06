@@ -1,0 +1,10 @@
+Menu="Settings"
+Title="Unraid Firewall"
+Type="xmenu"
+Markdown="false"
+---
+<?php
+
+require_once '/usr/local/emhttp/plugins/unraid-firewall/include/page.php';
+
+echo \UnraidFirewall\getSettingsPage();

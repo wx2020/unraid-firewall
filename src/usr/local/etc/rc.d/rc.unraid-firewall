@@ -1,0 +1,557 @@
+#!/bin/bash
+
+# Apply the plugin-owned inbound policy without replacing Unraid's own rules.
+
+CONFIG_DIR="/boot/config/plugins/unraid-firewall"
+CONFIG_FILE="$CONFIG_DIR/unraid-firewall.cfg"
+RULES4_FILE="$CONFIG_DIR/ipv4.rules"
+RULES6_FILE="$CONFIG_DIR/ipv6.rules"
+STATE_FILE="/var/run/unraid-firewall.status"
+LOG_FILE="/var/log/unraid-firewall.log"
+CHAIN4="UNRAID_FIREWALL4"
+CHAIN6="UNRAID_FIREWALL6"
+DOCKER_USER_CHAIN="DOCKER-USER"
+DOCKER_CHAIN4="UNRAID_FIREWALL_DOCKER4"
+DOCKER_CHAIN6="UNRAID_FIREWALL_DOCKER6"
+
+IPTABLES4="$(command -v iptables 2>/dev/null || true)"
+IPTABLES6="$(command -v ip6tables 2>/dev/null || true)"
+
+mkdir -p "$CONFIG_DIR" /var/run /var/log
+touch "$LOG_FILE"
+
+log() {
+    printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"
+}
+
+set_state() {
+    printf '%s\n' "$1" > "$STATE_FILE"
+    chmod 0644 "$STATE_FILE"
+}
+
+read_setting() {
+    local key="$1"
+    local default_value="$2"
+    local value=""
+
+    if [ -f "$CONFIG_FILE" ]; then
+        value="$(sed -n "s/^${key}=//p" "$CONFIG_FILE" | tail -n 1)"
+        value="${value#\"}"
+        value="${value%\"}"
+    fi
+
+    if [ -n "$value" ]; then
+        printf '%s\n' "$value"
+    else
+        printf '%s\n' "$default_value"
+    fi
+}
+
+is_enabled() {
+    case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+        1|yes|true|on) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+remove_jump_from() {
+    local command_path="$1"
+    local parent_chain="$2"
+    local child_chain="$3"
+
+    [ -n "$command_path" ] || return 1
+    while "$command_path" -w 5 -D "$parent_chain" -j "$child_chain" >/dev/null 2>&1; do
+        :
+    done
+}
+
+remove_jump() {
+    remove_jump_from "$1" INPUT "$2"
+}
+
+remove_family() {
+    local command_path="$1"
+    local chain="$2"
+
+    if [ -z "$command_path" ]; then
+        log "Cannot manage $chain: firewall command is not available."
+        return 1
+    fi
+
+    remove_jump "$command_path" "$chain" || true
+    "$command_path" -w 5 -F "$chain" >/dev/null 2>&1 || true
+    "$command_path" -w 5 -X "$chain" >/dev/null 2>&1 || true
+    return 0
+}
+
+prepare_family() {
+    local command_path="$1"
+    local chain="$2"
+
+    if [ -z "$command_path" ]; then
+        log "Cannot enable $chain: firewall command is not available."
+        return 1
+    fi
+
+    remove_jump "$command_path" "$chain" || true
+    if "$command_path" -w 5 -L "$chain" -n >/dev/null 2>&1; then
+        "$command_path" -w 5 -F "$chain" >/dev/null 2>&1 || return 1
+    else
+        "$command_path" -w 5 -N "$chain" >/dev/null 2>&1 || return 1
+    fi
+    return 0
+}
+
+delete_family_after_error() {
+    local command_path="$1"
+    local chain="$2"
+    [ -n "$command_path" ] || return 0
+    remove_jump "$command_path" "$chain" || true
+    "$command_path" -w 5 -F "$chain" >/dev/null 2>&1 || true
+    "$command_path" -w 5 -X "$chain" >/dev/null 2>&1 || true
+}
+
+add_connection_rule() {
+    local command_path="$1"
+    local chain="$2"
+    local target="${3:-ACCEPT}"
+
+    if ! "$command_path" -w 5 -A "$chain" -m conntrack \
+        --ctstate ESTABLISHED,RELATED -j "$target" >/dev/null 2>&1; then
+        "$command_path" -w 5 -A "$chain" -m state \
+            --state ESTABLISHED,RELATED -j "$target" >/dev/null 2>&1
+    fi
+}
+
+source_looks_safe() {
+    local source="$1"
+    local family="$2"
+
+    case "$source" in
+        ""|*[!0-9A-Fa-f:./]*) return 1 ;;
+    esac
+
+    case "$family:$source" in
+        4:*:*) return 1 ;;
+        4:*) return 0 ;;
+        6:*:*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+normalize_port() {
+    local value="$1"
+    local start end
+
+    if [[ "$value" =~ ^([0-9]{1,5})(-([0-9]{1,5}))?$ ]]; then
+        start="${BASH_REMATCH[1]}"
+        end="${BASH_REMATCH[3]:-$start}"
+    else
+        return 1
+    fi
+
+    if [ "$start" -lt 1 ] || [ "$start" -gt 65535 ] || \
+        [ "$end" -lt 1 ] || [ "$end" -gt 65535 ] || [ "$end" -lt "$start" ]; then
+        return 1
+    fi
+
+    if [ "$start" = "$end" ]; then
+        printf '%s\n' "$start"
+    else
+        printf '%s:%s\n' "$start" "$end"
+    fi
+}
+
+append_policy_rule() {
+    local command_path="$1"
+    local chain="$2"
+    local output_interface="$3"
+    local source="$4"
+    local protocol="$5"
+    local port="$6"
+    local port_mode="$7"
+    local target="$8"
+    local -a arguments
+
+    arguments=(-w 5 -A "$chain")
+    if [ -n "$output_interface" ]; then
+        arguments+=(-o "$output_interface")
+    fi
+    if [ -n "$source" ]; then
+        arguments+=("--source=$source")
+    fi
+    if [ "$protocol" != "any" ]; then
+        arguments+=(-p "$protocol")
+    fi
+    if [ -n "$port" ]; then
+        if [ "$port_mode" = "docker" ]; then
+            # DOCKER-USER sees the packet after DNAT. Match the host-published
+            # port from conntrack's original destination instead.
+            arguments+=(-m conntrack --ctorigdstport "$port")
+        else
+            arguments+=(-m "$protocol" --dport "$port")
+        fi
+    fi
+    arguments+=(-j "$target")
+
+    "$command_path" "${arguments[@]}" >/dev/null 2>&1
+}
+
+add_source_rules() {
+    local command_path="$1"
+    local chain="$2"
+    local rules_file="$3"
+    local family="$4"
+    local output_interface="${5:-}"
+    local allow_target="${6:-ACCEPT}"
+    local deny_target="${7:-DROP}"
+    local port_mode="${8:-input}"
+    local raw line name action source protocol port extra target port_spec
+
+    [ -f "$rules_file" ] || return 0
+    set -f
+
+    while IFS= read -r raw || [ -n "$raw" ]; do
+        line="$(printf '%s\n' "$raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+        case "$line" in
+            ""|'#'*) continue ;;
+        esac
+
+        name="Legacy rule"
+        action="allow"
+        source=""
+        protocol="any"
+        port=""
+        extra=""
+
+        if [[ "$line" == *"|"* ]]; then
+            IFS='|' read -r name action source protocol port extra <<< "$line"
+            if [ -n "$extra" ] || [ -z "$name" ]; then
+                log "Ignoring malformed named rule in $rules_file: $line"
+                return 1
+            fi
+            action="${action,,}"
+            protocol="${protocol,,}"
+        else
+            # Read old bare-source files created by versions before named
+            # rules were added.  They remain valid as all-port allow/deny
+            # rules until the next WebUI save migrates them.
+            source="$line"
+            if [[ "$line" =~ ^(allow|deny)[[:space:]]+([^[:space:]]+)$ ]]; then
+                action="${BASH_REMATCH[1],,}"
+                source="${BASH_REMATCH[2]}"
+            elif [[ "$line" =~ ^([^[:space:]]+)$ ]]; then
+                source="${BASH_REMATCH[1]}"
+            else
+                log "Ignoring malformed legacy rule in $rules_file: $line"
+                return 1
+            fi
+        fi
+
+        if [ "$action" != "allow" ] && [ "$action" != "deny" ]; then
+            log "Ignoring invalid action in $rules_file rule $name."
+            return 1
+        fi
+        if [ "$protocol" != "any" ] && [ "$protocol" != "tcp" ] && [ "$protocol" != "udp" ]; then
+            log "Ignoring invalid protocol in $rules_file rule $name."
+            return 1
+        fi
+        if [ -n "$source" ] && ! source_looks_safe "$source" "$family"; then
+            log "Ignoring invalid IPv$family source in $rules_file rule $name: $source"
+            return 1
+        fi
+        if [ -n "$port" ] && [ "$protocol" = "any" ]; then
+            log "Ignoring port on an any-protocol rule in $rules_file rule $name."
+            return 1
+        fi
+        if [ -n "$port" ]; then
+            port_spec="$(normalize_port "$port")" || {
+                log "Ignoring invalid port in $rules_file rule $name: $port"
+                return 1
+            }
+        else
+            port_spec=""
+        fi
+
+        if [ "$action" = "deny" ]; then
+            target="$deny_target"
+        else
+            target="$allow_target"
+        fi
+
+        append_policy_rule "$command_path" "$chain" "$output_interface" \
+            "$source" "$protocol" "$port_spec" "$port_mode" "$target" || return 1
+    done < "$rules_file"
+
+    set +f
+    return 0
+}
+
+apply_family() {
+    local command_path="$1"
+    local chain="$2"
+    local rules_file="$3"
+    local family="$4"
+    local default_allow="$5"
+
+    prepare_family "$command_path" "$chain" || return 1
+
+    add_connection_rule "$command_path" "$chain" || {
+        delete_family_after_error "$command_path" "$chain"
+        return 1
+    }
+    "$command_path" -w 5 -A "$chain" -i lo -j ACCEPT >/dev/null 2>&1 || {
+        delete_family_after_error "$command_path" "$chain"
+        return 1
+    }
+    add_source_rules "$command_path" "$chain" "$rules_file" "$family" || {
+        delete_family_after_error "$command_path" "$chain"
+        return 1
+    }
+
+    if is_enabled "$default_allow"; then
+        "$command_path" -w 5 -A "$chain" -j ACCEPT >/dev/null 2>&1 || {
+            delete_family_after_error "$command_path" "$chain"
+            return 1
+        }
+    else
+        "$command_path" -w 5 -A "$chain" -j DROP >/dev/null 2>&1 || {
+            delete_family_after_error "$command_path" "$chain"
+            return 1
+        }
+    fi
+
+    "$command_path" -w 5 -I INPUT 1 -j "$chain" >/dev/null 2>&1 || {
+        delete_family_after_error "$command_path" "$chain"
+        return 1
+    }
+    return 0
+}
+
+remove_docker_family() {
+    local command_path="$1"
+    local chain="$2"
+
+    if [ -z "$command_path" ]; then
+        log "Cannot manage Docker chain $chain: firewall command is not available."
+        return 1
+    fi
+
+    remove_jump_from "$command_path" "$DOCKER_USER_CHAIN" "$chain" || true
+    "$command_path" -w 5 -F "$chain" >/dev/null 2>&1 || true
+    "$command_path" -w 5 -X "$chain" >/dev/null 2>&1 || true
+    return 0
+}
+
+prepare_docker_family() {
+    local command_path="$1"
+    local chain="$2"
+
+    if [ -z "$command_path" ]; then
+        log "Cannot enable Docker chain $chain: firewall command is not available."
+        return 1
+    fi
+
+    # Docker creates DOCKER-USER when its iptables integration is enabled.
+    # Do not create or modify FORWARD here; Docker owns that hook.
+    if ! "$command_path" -w 5 -L "$DOCKER_USER_CHAIN" -n >/dev/null 2>&1; then
+        return 2
+    fi
+
+    remove_jump_from "$command_path" "$DOCKER_USER_CHAIN" "$chain" || true
+    if "$command_path" -w 5 -L "$chain" -n >/dev/null 2>&1; then
+        "$command_path" -w 5 -F "$chain" >/dev/null 2>&1 || return 1
+    else
+        "$command_path" -w 5 -N "$chain" >/dev/null 2>&1 || return 1
+    fi
+    return 0
+}
+
+delete_docker_family_after_error() {
+    local command_path="$1"
+    local chain="$2"
+    [ -n "$command_path" ] || return 0
+    remove_jump_from "$command_path" "$DOCKER_USER_CHAIN" "$chain" || true
+    "$command_path" -w 5 -F "$chain" >/dev/null 2>&1 || true
+    "$command_path" -w 5 -X "$chain" >/dev/null 2>&1 || true
+}
+
+add_docker_input_bypass_rules() {
+    local command_path="$1"
+    local chain="$2"
+    local interface_name
+
+    # Packets originating from Docker networks must not be treated as new
+    # external inbound connections.  This preserves container egress and
+    # container-to-container traffic while the policy below handles traffic
+    # headed into Docker bridge interfaces.
+    for interface_name in docker+ br-+ veth+ vxlan+; do
+        "$command_path" -w 5 -A "$chain" -i "$interface_name" -j RETURN \
+            >/dev/null 2>&1 || return 1
+    done
+    return 0
+}
+
+apply_docker_family() {
+    local command_path="$1"
+    local chain="$2"
+    local rules_file="$3"
+    local family="$4"
+    local default_allow="$5"
+    local prepare_status
+    local output_interface
+
+    prepare_docker_family "$command_path" "$chain"
+    prepare_status=$?
+    if [ "$prepare_status" -eq 2 ]; then
+        remove_docker_family "$command_path" "$chain" || true
+        log "Docker $DOCKER_USER_CHAIN chain is unavailable; IPv$family Docker forwarding policy was skipped."
+        return 2
+    fi
+    if [ "$prepare_status" -ne 0 ]; then
+        return 1
+    fi
+
+    add_connection_rule "$command_path" "$chain" RETURN || {
+        delete_docker_family_after_error "$command_path" "$chain"
+        return 1
+    }
+    add_docker_input_bypass_rules "$command_path" "$chain" || {
+        delete_docker_family_after_error "$command_path" "$chain"
+        return 1
+    }
+
+    # Match only traffic whose destination is a Docker-managed interface.
+    # This keeps unrelated VM or host forwarding outside this plugin's scope.
+    for output_interface in docker+ br-+ veth+ vxlan+; do
+        add_source_rules "$command_path" "$chain" "$rules_file" "$family" \
+            "$output_interface" RETURN DROP docker || {
+            delete_docker_family_after_error "$command_path" "$chain"
+            return 1
+        }
+
+        if is_enabled "$default_allow"; then
+            "$command_path" -w 5 -A "$chain" -o "$output_interface" -j RETURN \
+                >/dev/null 2>&1 || {
+                delete_docker_family_after_error "$command_path" "$chain"
+                return 1
+            }
+        else
+            "$command_path" -w 5 -A "$chain" -o "$output_interface" -j DROP \
+                >/dev/null 2>&1 || {
+                delete_docker_family_after_error "$command_path" "$chain"
+                return 1
+            }
+        fi
+    done
+
+    "$command_path" -w 5 -I "$DOCKER_USER_CHAIN" 1 -j "$chain" \
+        >/dev/null 2>&1 || {
+        delete_docker_family_after_error "$command_path" "$chain"
+        return 1
+    }
+    return 0
+}
+
+apply_rules() {
+    local enabled ipv4_enabled ipv6_enabled
+    local default4 default6
+    local result=0
+    local docker_result=0
+
+    enabled="$(read_setting ENABLED 0)"
+    ipv4_enabled="$(read_setting IPV4_ENABLED 1)"
+    ipv6_enabled="$(read_setting IPV6_ENABLED 1)"
+    default4="$(read_setting IPV4_DEFAULT_ALLOW 1)"
+    default6="$(read_setting IPV6_DEFAULT_ALLOW 1)"
+
+    if ! is_enabled "$enabled"; then
+        remove_family "$IPTABLES4" "$CHAIN4" || result=1
+        remove_family "$IPTABLES6" "$CHAIN6" || result=1
+        remove_docker_family "$IPTABLES4" "$DOCKER_CHAIN4" || result=1
+        remove_docker_family "$IPTABLES6" "$DOCKER_CHAIN6" || result=1
+        if [ "$result" -eq 0 ]; then
+            set_state inactive
+            log "Firewall disabled; plugin chains removed."
+        else
+            set_state error
+            log "Firewall disabled, but one or more plugin chains could not be removed."
+        fi
+        return "$result"
+    fi
+
+    if is_enabled "$ipv4_enabled"; then
+        apply_family "$IPTABLES4" "$CHAIN4" "$RULES4_FILE" 4 "$default4" || result=1
+        docker_result=0
+        apply_docker_family "$IPTABLES4" "$DOCKER_CHAIN4" "$RULES4_FILE" 4 "$default4" || docker_result=$?
+        [ "$docker_result" -eq 0 ] || [ "$docker_result" -eq 2 ] || result=1
+    else
+        remove_family "$IPTABLES4" "$CHAIN4" || result=1
+        remove_docker_family "$IPTABLES4" "$DOCKER_CHAIN4" || result=1
+    fi
+
+    if is_enabled "$ipv6_enabled"; then
+        apply_family "$IPTABLES6" "$CHAIN6" "$RULES6_FILE" 6 "$default6" || result=1
+        docker_result=0
+        apply_docker_family "$IPTABLES6" "$DOCKER_CHAIN6" "$RULES6_FILE" 6 "$default6" || docker_result=$?
+        [ "$docker_result" -eq 0 ] || [ "$docker_result" -eq 2 ] || result=1
+    else
+        remove_family "$IPTABLES6" "$CHAIN6" || result=1
+        remove_docker_family "$IPTABLES6" "$DOCKER_CHAIN6" || result=1
+    fi
+
+    if [ "$result" -eq 0 ]; then
+        set_state active
+        log "Firewall policy applied successfully."
+    else
+        set_state error
+        log "Firewall policy application failed; inspect the configuration and this log."
+    fi
+    return "$result"
+}
+
+stop_rules() {
+    local result=0
+    remove_family "$IPTABLES4" "$CHAIN4" || result=1
+    remove_family "$IPTABLES6" "$CHAIN6" || result=1
+    remove_docker_family "$IPTABLES4" "$DOCKER_CHAIN4" || result=1
+    remove_docker_family "$IPTABLES6" "$DOCKER_CHAIN6" || result=1
+    if [ "$result" -eq 0 ]; then
+        set_state inactive
+        log "Firewall plugin chains removed."
+    else
+        set_state error
+        log "Firewall plugin chains could not be fully removed."
+    fi
+    return "$result"
+}
+
+run_locked() {
+    local operation="$1"
+    local lock_file="/var/run/unraid-firewall.lock"
+
+    # flock is present on normal Unraid installations.  If it is unavailable,
+    # still perform the operation rather than making the plugin unusable.
+    if command -v flock >/dev/null 2>&1; then
+        exec 9>"$lock_file"
+        flock -x 9
+    fi
+
+    case "$operation" in
+        apply|restart) apply_rules ;;
+        stop) stop_rules ;;
+        status)
+            if [ -f "$STATE_FILE" ]; then
+                cat "$STATE_FILE"
+            else
+                printf '%s\n' inactive
+            fi
+            ;;
+        *)
+            echo "usage: $0 {apply|restart|stop|status}" >&2
+            return 2
+            ;;
+    esac
+}
+
+run_locked "${1:-status}"

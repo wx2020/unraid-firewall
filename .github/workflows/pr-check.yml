@@ -1,0 +1,105 @@
+name: PR Check
+
+on:
+  pull_request:
+  push:
+    tags:
+      - '20*'
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to validate and release
+        required: true
+        default: '2026.08.06.0003'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Validate metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          grep -Fq "\"version\": \"${VERSION}\"" plugin/plugin.json
+          grep -Fq "version=\"${VERSION}\"" plugin/unraid-firewall.plg
+          grep -Fq '<SHA256>REPLACE_WITH_RELEASE_SHA256</SHA256>' plugin/unraid-firewall.plg
+          python3 - <<'PY'
+          import json
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          version = Path('VERSION').read_text(encoding='utf-8').strip()
+          metadata = json.loads(Path('plugin/plugin.json').read_text(encoding='utf-8'))
+          assert metadata['version'] == version
+          root = ET.parse('plugin/unraid-firewall.plg').getroot()
+          assert root.attrib['version'] == version
+          PY
+
+      - name: Validate PHP syntax and rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          find src -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php tests/validate.php
+          php tests/render-pages.php
+
+      - name: Validate shell syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            bash -n "$file"
+          done < <(find src -type f \( -name '*.sh' -o -name 'rc.unraid-firewall' \) -print0)
+          bash -n build.sh
+
+      - name: Build and inspect package
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash build.sh
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          PKG="unraid-firewall-${VERSION}-noarch-1.txz"
+          test -s "${PKG}"
+          sha256sum -c "${PKG}.sha256"
+          rm -rf package
+          mkdir package
+          tar -xf "${PKG}" -C package
+          test -f package/install/doinst.sh
+          test -f package/usr/local/etc/rc.d/rc.unraid-firewall
+          test -f package/usr/local/emhttp/plugins/unraid-firewall/UnraidFirewall.page
+          test -f package/usr/local/emhttp/plugins/unraid-firewall/include/apply.php
+
+      - name: Check whitespace
+        shell: bash
+        run: git diff --check
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unraid-firewall-pr-package
+          path: |
+            *.txz
+            *.txz.sha256
+          retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    needs: validate
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+      release_tag: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
