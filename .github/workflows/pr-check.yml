@@ -11,7 +11,7 @@ on:
       version:
         description: Version to validate and release
         required: true
-        default: '2026.08.06.0007'
+        default: '2026.08.06.0008'
 
 permissions:
   contents: read
@@ -55,6 +55,7 @@ jobs:
           find src -type f -name '*.php' -print0 | xargs -0 -n1 php -l
           php tests/validate.php
           php tests/render-pages.php
+          php tests/translation-keys.php
 
       - name: Validate shell syntax
         shell: bash

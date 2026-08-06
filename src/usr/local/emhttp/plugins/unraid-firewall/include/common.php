@@ -15,7 +15,9 @@ const STATE_FILE = '/var/run/unraid-firewall.status';
 function translateText(string $text): string
 {
     if (function_exists('_')) {
-        return (string) \_($text);
+        // Unraid's helper emits &apos; for apostrophes; decode it before the
+        // page applies its normal HTML escaping.
+        return str_replace('&apos;', "'", (string) \_($text));
     }
 
     return $text;
