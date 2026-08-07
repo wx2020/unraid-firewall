@@ -190,6 +190,8 @@ $javascriptText = [
     'remove' => translateText('Remove'),
     'applying' => translateText('Applying firewall rules...'),
     'applyFailed' => translateText('The firewall rules could not be applied.'),
+    'requestFailed' => translateText('The WebUI could not contact the firewall service.'),
+    'requestTimedOut' => translateText('The firewall request timed out.'),
     'applied' => translateText('Firewall rules applied.'),
 ];
 ?>
@@ -230,32 +232,55 @@ function removeRuleRow(button) {
 
     if (!form) return;
 
+    function showApplyError(message) {
+        result.className = 'ufw-result ufw-result-error';
+        result.textContent = message || unraidFirewallText.applyFailed;
+        button.disabled = false;
+    }
+
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         button.disabled = true;
         result.className = 'ufw-result ufw-result-info';
         result.textContent = unraidFirewallText.applying;
 
-        fetch(form.action, {
-            method: 'POST',
-            body: new FormData(form),
-            credentials: 'same-origin'
-        }).then(function (response) {
-            return response.json().then(function (data) {
-                if (!response.ok || !data.success) {
-                    throw new Error(data.message || unraidFirewallText.applyFailed);
+        try {
+            var request = new XMLHttpRequest();
+            request.open('POST', form.action, true);
+            request.timeout = 60000;
+            request.setRequestHeader('Accept', 'application/json');
+
+            request.onload = function () {
+                var data;
+                try {
+                    data = JSON.parse(request.responseText);
+                } catch (error) {
+                    showApplyError(unraidFirewallText.requestFailed);
+                    return;
                 }
-                return data;
-            });
-        }).then(function (data) {
-            result.className = 'ufw-result ufw-result-success';
-            result.textContent = unraidFirewallText.applied;
-            window.setTimeout(function () { window.location.reload(); }, 700);
-        }).catch(function (error) {
-            result.className = 'ufw-result ufw-result-error';
-            result.textContent = error.message;
-            button.disabled = false;
-        });
+
+                if (request.status < 200 || request.status >= 300 || !data.success) {
+                    showApplyError(data.message || unraidFirewallText.applyFailed);
+                    return;
+                }
+
+                result.className = 'ufw-result ufw-result-success';
+                result.textContent = unraidFirewallText.applied;
+                window.setTimeout(function () { window.location.reload(); }, 700);
+            };
+            request.onerror = function () {
+                showApplyError(unraidFirewallText.requestFailed);
+            };
+            request.ontimeout = function () {
+                showApplyError(unraidFirewallText.requestTimedOut);
+            };
+            request.onabort = function () {
+                showApplyError(unraidFirewallText.requestFailed);
+            };
+            request.send(new FormData(form));
+        } catch (error) {
+            showApplyError(unraidFirewallText.requestFailed);
+        }
     });
 }());
 </script>

@@ -90,6 +90,7 @@ try {
         respond(['success' => false, 'message' => 'POST is required.'], 405);
     }
 
+    firewallLog('WebUI apply request received.');
     requireCsrfToken($_POST['csrf_token'] ?? null);
 
     $config = [
@@ -122,7 +123,9 @@ try {
 
     respond(['success' => true, 'message' => 'Firewall rules saved and applied.']);
 } catch (\UnexpectedValueException $exception) {
+    firewallLog('WebUI apply request rejected: ' . $exception->getMessage());
     respond(['success' => false, 'message' => $exception->getMessage()], 403);
 } catch (\Throwable $exception) {
+    firewallLog('WebUI apply request failed: ' . $exception->getMessage());
     respond(['success' => false, 'message' => $exception->getMessage()], 400);
 }
