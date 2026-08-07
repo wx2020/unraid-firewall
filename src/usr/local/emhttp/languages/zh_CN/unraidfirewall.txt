@@ -49,3 +49,5 @@ The WebUI could not contact the firewall service=WebUI 无法连接防火墙服�
 The firewall request timed out=防火墙请求超时。
 Firewall rules applied=防火墙规则已应用。
 Firewall rules saved and applied=防火墙规则已保存并应用。
+Firewall settings saved Applying rules=防火墙设置已保存，正在应用规则……
+The firewall settings could not be saved=无法保存防火墙设置。

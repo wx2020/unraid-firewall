@@ -11,7 +11,7 @@ on:
       version:
         description: Version to validate and release
         required: true
-        default: '2026.08.07.0001'
+        default: '2026.08.07.0002'
 
 permissions:
   contents: read
@@ -81,7 +81,9 @@ jobs:
           test -f package/install/doinst.sh
           test -f package/usr/local/etc/rc.d/rc.unraid-firewall
           test -f package/usr/local/emhttp/plugins/unraid-firewall/UnraidFirewall.page
-          test -f package/usr/local/emhttp/plugins/unraid-firewall/include/apply.php
+          test -f package/usr/local/emhttp/plugins/unraid-firewall/include/update.php
+          test -x package/usr/local/emhttp/plugins/unraid-firewall/webui-apply.sh
+          ! test -e package/usr/local/emhttp/plugins/unraid-firewall/include/apply.php
           test -f package/usr/local/emhttp/languages/en_US/unraidfirewall.txt
           test -f package/usr/local/emhttp/languages/zh_CN/unraidfirewall.txt
 

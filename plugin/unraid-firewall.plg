@@ -4,7 +4,7 @@
 <PLUGIN
   name="unraid-firewall"
   author="wx2020"
-  version="2026.08.07.0001"
+  version="2026.08.07.0002"
   launch="Settings/UnraidFirewall"
   pluginURL="https://github.com/wx2020/unraid-firewall/releases/latest/download/unraid-firewall.plg"
   support="https://github.com/wx2020/unraid-firewall/issues"
@@ -13,6 +13,12 @@
 
 <CHANGES>
 <![CDATA[
+
+### 2026.08.07.0002
+
+- Replaced the custom AJAX settings endpoint with Unraid's standard `/update.php` workflow.
+- Fixed firewall settings not persisting after Apply and page refresh.
+- Added a package upgrade cleanup for the obsolete direct apply endpoint.
 
 ### 2026.08.07.0001
 
@@ -73,8 +79,8 @@
   it with the package SHA256 and publishes the installable .plg with the
   versioned release assets.
 -->
-<FILE Name="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.07.0001-noarch-1.txz">
-<URL>https://github.com/wx2020/unraid-firewall/releases/download/2026.08.07.0001/unraid-firewall-2026.08.07.0001-noarch-1.txz</URL>
+<FILE Name="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.07.0002-noarch-1.txz">
+<URL>https://github.com/wx2020/unraid-firewall/releases/download/2026.08.07.0002/unraid-firewall-2026.08.07.0002-noarch-1.txz</URL>
 <SHA256>REPLACE_WITH_RELEASE_SHA256</SHA256>
 </FILE>
 
@@ -83,7 +89,7 @@
 <![CDATA[
 set -e
 
-PKG="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.07.0001-noarch-1.txz"
+PKG="/boot/config/plugins/unraid-firewall/unraid-firewall-2026.08.07.0002-noarch-1.txz"
 if [ ! -f "$PKG" ]; then
     echo "unraid-firewall package was not downloaded: $PKG"
     exit 1

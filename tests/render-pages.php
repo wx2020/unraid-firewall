@@ -15,8 +15,11 @@ $requiredFragments = [
     'ipv6_protocol[]',
     'ipv6_port[]',
     'DOCKER-USER',
-    'new XMLHttpRequest()',
-    'request.timeout = 60000',
+    'action="/update.php"',
+    'target="progressFrame"',
+    'name="#file" value="unraid-firewall/unraid-firewall.cfg"',
+    'name="#include" value="/plugins/unraid-firewall/include/update.php"',
+    'name="#command" value="/plugins/unraid-firewall/webui-apply.sh"',
 ];
 
 foreach ($requiredFragments as $fragment) {
@@ -25,8 +28,8 @@ foreach ($requiredFragments as $fragment) {
     }
 }
 
-if (strpos($page, 'fetch(form.action') !== false) {
-    throw new RuntimeException('Rendered WebUI still depends on fetch for applying rules.');
+if (strpos($page, 'XMLHttpRequest') !== false || strpos($page, 'fetch(') !== false) {
+    throw new RuntimeException('Rendered WebUI still bypasses Unraid standard form submission.');
 }
 
 echo "WebUI render test passed.\n";

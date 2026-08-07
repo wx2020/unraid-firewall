@@ -28,7 +28,11 @@ ln -sfn ../reapply.sh /usr/local/emhttp/plugins/unraid-firewall/event/docker_sta
 chmod 0755 \
     /usr/local/etc/rc.d/rc.unraid-firewall \
     /usr/local/emhttp/plugins/unraid-firewall/reapply.sh \
-    /usr/local/emhttp/plugins/unraid-firewall/include/apply.php
+    /usr/local/emhttp/plugins/unraid-firewall/webui-apply.sh
+
+# Remove the legacy direct AJAX endpoint. Settings are saved through Unraid's
+# standard /update.php include-and-command workflow.
+rm -f /usr/local/emhttp/plugins/unraid-firewall/include/apply.php
 
 mkdir -p /var/log
 touch /var/log/unraid-firewall.log

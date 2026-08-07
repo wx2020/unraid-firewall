@@ -35,6 +35,8 @@ $requiredKeys = [
     'The WebUI could not contact the firewall service',
     'The firewall request timed out',
     'Firewall rules applied',
+    'Firewall settings saved Applying rules',
+    'The firewall settings could not be saved',
 ];
 
 foreach ($requiredKeys as $key) {
