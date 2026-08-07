@@ -17,8 +17,10 @@ DOCKER_CHAIN6="UNRAID_FIREWALL_DOCKER6"
 IPTABLES4="$(command -v iptables 2>/dev/null || true)"
 IPTABLES6="$(command -v ip6tables 2>/dev/null || true)"
 
-mkdir -p "$CONFIG_DIR" /var/run /var/log
-touch "$LOG_FILE"
+if [ "${UNRAID_FIREWALL_SOURCE_ONLY:-0}" != "1" ]; then
+    mkdir -p "$CONFIG_DIR" /var/run /var/log
+    touch "$LOG_FILE"
+fi
 
 log() {
     printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE"
@@ -162,7 +164,7 @@ normalize_port() {
     fi
 }
 
-append_policy_rule() {
+append_policy_rule_for_protocol() {
     local command_path="$1"
     local chain="$2"
     local output_interface="$3"
@@ -195,6 +197,28 @@ append_policy_rule() {
     arguments+=(-j "$target")
 
     "$command_path" "${arguments[@]}" >/dev/null 2>&1
+}
+
+append_policy_rule() {
+    local command_path="$1"
+    local chain="$2"
+    local output_interface="$3"
+    local source="$4"
+    local protocol="$5"
+    local port="$6"
+    local port_mode="$7"
+    local target="$8"
+
+    if [ -n "$port" ] && [ "$protocol" = "any" ]; then
+        append_policy_rule_for_protocol "$command_path" "$chain" \
+            "$output_interface" "$source" tcp "$port" "$port_mode" "$target" || return 1
+        append_policy_rule_for_protocol "$command_path" "$chain" \
+            "$output_interface" "$source" udp "$port" "$port_mode" "$target" || return 1
+        return 0
+    fi
+
+    append_policy_rule_for_protocol "$command_path" "$chain" \
+        "$output_interface" "$source" "$protocol" "$port" "$port_mode" "$target"
 }
 
 add_source_rules() {
@@ -258,10 +282,6 @@ add_source_rules() {
         fi
         if [ -n "$source" ] && ! source_looks_safe "$source" "$family"; then
             log "Ignoring invalid IPv$family source in $rules_file rule $name: $source"
-            return 1
-        fi
-        if [ -n "$port" ] && [ "$protocol" = "any" ]; then
-            log "Ignoring port on an any-protocol rule in $rules_file rule $name."
             return 1
         fi
         if [ -n "$port" ]; then
@@ -560,4 +580,6 @@ run_locked() {
     esac
 }
 
-run_locked "${1:-status}"
+if [ "${UNRAID_FIREWALL_SOURCE_ONLY:-0}" != "1" ]; then
+    run_locked "${1:-status}"
+fi

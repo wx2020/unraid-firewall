@@ -178,9 +178,8 @@ function normalizeRuleRecord(array $rule, int $family, string $context = 'Rule')
     }
 
     $port = normalizePort((string) ($rule['port'] ?? ''), $context);
-    if ($port !== '' && $protocol === 'any') {
-        throw new \InvalidArgumentException($context . ' must select TCP or UDP when a destination port is specified.');
-    }
+    // A port with protocol "any" is expanded to adjacent TCP and UDP
+    // matches when the rule is applied to iptables/ip6tables.
 
     return [
         'name' => $name,
