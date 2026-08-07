@@ -69,6 +69,28 @@ function parseBoolean($value, bool $default = false): bool
     return $default;
 }
 
+function postToggle(array $input, string $name): bool
+{
+    if (!array_key_exists($name, $input)) {
+        throw new \InvalidArgumentException('Missing setting: ' . $name);
+    }
+
+    $value = $input[$name];
+    if (is_array($value)) {
+        throw new \InvalidArgumentException('Invalid setting: ' . $name);
+    }
+
+    $value = strtolower(trim((string) $value));
+    if (in_array($value, ['1', 'true', 'on', 'yes'], true)) {
+        return true;
+    }
+    if (in_array($value, ['0', 'false', 'off', 'no'], true)) {
+        return false;
+    }
+
+    throw new \InvalidArgumentException('Invalid setting: ' . $name);
+}
+
 function loadConfig(): array
 {
     $config = defaultConfig();
@@ -167,6 +189,52 @@ function normalizeRuleRecord(array $rule, int $family, string $context = 'Rule')
         'protocol' => $protocol,
         'port' => $port,
     ];
+}
+
+function postRuleRows(array $input, string $prefix, int $family): array
+{
+    $fields = [];
+    foreach (['name', 'action', 'source', 'protocol', 'port'] as $field) {
+        $key = $prefix . '_' . $field;
+        $value = $input[$key] ?? [];
+        if (!is_array($value)) {
+            throw new \InvalidArgumentException('Invalid rule field: ' . $key);
+        }
+        $fields[$field] = array_values($value);
+    }
+
+    $count = 0;
+    foreach ($fields as $values) {
+        $count = max($count, count($values));
+    }
+    if ($count > 512) {
+        throw new \InvalidArgumentException('A protocol group may contain at most 512 rules.');
+    }
+
+    $records = [];
+    for ($index = 0; $index < $count; $index++) {
+        $rule = [];
+        foreach ($fields as $field => $values) {
+            $value = $values[$index] ?? '';
+            if (is_array($value)) {
+                throw new \InvalidArgumentException('Invalid value in ' . $prefix . '_' . $field . '.');
+            }
+            $rule[$field] = (string) $value;
+        }
+
+        $isEmptyRow = trim($rule['name']) === ''
+            && trim($rule['source']) === ''
+            && trim($rule['port']) === ''
+            && strtolower(trim($rule['action'])) === 'allow'
+            && strtolower(trim($rule['protocol'])) === 'any';
+        if ($isEmptyRow) {
+            continue;
+        }
+
+        $records[] = normalizeRuleRecord($rule, $family, ucfirst($prefix) . ' rule ' . ($index + 1));
+    }
+
+    return $records;
 }
 
 function legacyRuleRecord(string $line, int $family, int $lineNumber): array

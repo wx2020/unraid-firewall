@@ -66,7 +66,13 @@ $displayRules6 = $rules6 === [] ? [$emptyRule] : $rules6;
 
     <table class="unraid tablesorter"><thead><tr><td><?= html(translateText('Firewall policy')) ?></td></tr></thead></table>
 
-    <form method="post" action="/plugins/unraid-firewall/include/apply.php" id="unraidFirewallForm">
+    <form method="post" action="/update.php" target="progressFrame" id="unraidFirewallForm">
+        <input type="hidden" name="#file" value="unraid-firewall/unraid-firewall.cfg">
+        <input type="hidden" name="#raw_file" value="true">
+        <input type="hidden" name="#include" value="/plugins/unraid-firewall/include/update.php">
+        <input type="hidden" name="#command" value="/plugins/unraid-firewall/webui-apply.sh">
+        <input type="hidden" name="#arg[1]" value="<?= html(translateText('Firewall rules applied.')) ?>">
+        <input type="hidden" name="#arg[2]" value="<?= html(translateText('The firewall rules could not be applied.')) ?>">
         <input type="hidden" name="csrf_token" value="<?= html($csrf) ?>">
 
         <dl>
@@ -169,10 +175,9 @@ $displayRules6 = $rules6 === [] ? [$emptyRule] : $rules6;
         </div>
 
         <div class="ufw-actions">
-            <button type="submit" class="ufw-primary" id="ufwApplyButton"><?= html(translateText('Apply settings')) ?></button>
+            <button type="submit" class="ufw-primary"><?= html(translateText('Apply settings')) ?></button>
             <span class="ufw-runtime-status"><?= html(translateText('Last apply state:')) ?> <strong class="ufw-status-<?= html($state) ?>" id="ufwState"><?= html($stateLabel) ?></strong></span>
         </div>
-        <div class="ufw-result" id="ufwResult" role="status" aria-live="polite"></div>
     </form>
 </div>
 
@@ -188,11 +193,6 @@ $javascriptText = [
     'portPlaceholder' => translateText('5000 or 5000-5010'),
     'removeRule' => translateText('Remove rule'),
     'remove' => translateText('Remove'),
-    'applying' => translateText('Applying firewall rules...'),
-    'applyFailed' => translateText('The firewall rules could not be applied.'),
-    'requestFailed' => translateText('The WebUI could not contact the firewall service.'),
-    'requestTimedOut' => translateText('The firewall request timed out.'),
-    'applied' => translateText('Firewall rules applied.'),
 ];
 ?>
 <script>
@@ -224,63 +224,4 @@ function removeRuleRow(button) {
         addRuleRow(rows.id.indexOf('ipv6') === 0 ? 'ipv6' : 'ipv4');
     }
 }
-
-(function () {
-    var form = document.getElementById('unraidFirewallForm');
-    var button = document.getElementById('ufwApplyButton');
-    var result = document.getElementById('ufwResult');
-
-    if (!form) return;
-
-    function showApplyError(message) {
-        result.className = 'ufw-result ufw-result-error';
-        result.textContent = message || unraidFirewallText.applyFailed;
-        button.disabled = false;
-    }
-
-    form.addEventListener('submit', function (event) {
-        event.preventDefault();
-        button.disabled = true;
-        result.className = 'ufw-result ufw-result-info';
-        result.textContent = unraidFirewallText.applying;
-
-        try {
-            var request = new XMLHttpRequest();
-            request.open('POST', form.action, true);
-            request.timeout = 60000;
-            request.setRequestHeader('Accept', 'application/json');
-
-            request.onload = function () {
-                var data;
-                try {
-                    data = JSON.parse(request.responseText);
-                } catch (error) {
-                    showApplyError(unraidFirewallText.requestFailed);
-                    return;
-                }
-
-                if (request.status < 200 || request.status >= 300 || !data.success) {
-                    showApplyError(data.message || unraidFirewallText.applyFailed);
-                    return;
-                }
-
-                result.className = 'ufw-result ufw-result-success';
-                result.textContent = unraidFirewallText.applied;
-                window.setTimeout(function () { window.location.reload(); }, 700);
-            };
-            request.onerror = function () {
-                showApplyError(unraidFirewallText.requestFailed);
-            };
-            request.ontimeout = function () {
-                showApplyError(unraidFirewallText.requestTimedOut);
-            };
-            request.onabort = function () {
-                showApplyError(unraidFirewallText.requestFailed);
-            };
-            request.send(new FormData(form));
-        } catch (error) {
-            showApplyError(unraidFirewallText.requestFailed);
-        }
-    });
-}());
 </script>
