@@ -32,4 +32,9 @@ if (strpos($page, 'XMLHttpRequest') !== false || strpos($page, 'fetch(') !== fal
     throw new RuntimeException('Rendered WebUI still bypasses Unraid standard form submission.');
 }
 
+$updateHook = file_get_contents(__DIR__ . '/../src/usr/local/emhttp/plugins/unraid-firewall/include/update.php');
+if ($updateHook === false || strpos($updateHook, 'requireCsrfToken') !== false) {
+    throw new RuntimeException('The /update.php hook must rely on Unraid global CSRF validation.');
+}
+
 echo "WebUI render test passed.\n";

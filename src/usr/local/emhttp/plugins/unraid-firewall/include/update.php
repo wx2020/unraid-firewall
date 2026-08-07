@@ -13,7 +13,9 @@ $save = false;
 
 try {
     firewallLog('WebUI save request received.');
-    requireCsrfToken($_POST['csrf_token'] ?? null);
+    // Unraid's global local_prepend.php validates csrf_token before
+    // /update.php includes this hook and removes it from $_POST. Do not
+    // validate it a second time here.
 
     $config = [
         'enabled' => postToggle($_POST, 'enabled'),
