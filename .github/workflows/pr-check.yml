@@ -11,7 +11,7 @@ on:
       version:
         description: Version to validate and release
         required: true
-        default: '2026.08.07.0003'
+        default: '2026.08.07.0004'
 
 permissions:
   contents: read
@@ -64,6 +64,7 @@ jobs:
           while IFS= read -r -d '' file; do
             bash -n "$file"
           done < <(find src -type f \( -name '*.sh' -o -name 'rc.unraid-firewall' \) -print0)
+          bash tests/validate-firewall-rules.sh
           bash -n build.sh
 
       - name: Build and inspect package

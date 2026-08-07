@@ -10,7 +10,7 @@ A lightweight inbound firewall plugin for Unraid, with separate IPv4 and IPv6 po
 - Independent IPv4 and IPv6 switches.
 - Per-group default allow/deny behavior for sources that do not match a rule.
 - IPv4 and IPv6 address or CIDR support, such as `192.168.1.0/24` and `fd00::/8`.
-- Named rules with allow/deny action, source IP/CIDR, protocol, and destination port or port range, such as TCP `5000` or `5000-5010`.
+- Named rules with allow/deny action, source IP/CIDR, protocol, and destination port or port range, such as TCP `5000` or `5000-5010`. With **Any** and a port, the plugin matches both TCP and UDP.
 - Blank source means any source. Blank port means all ports for the selected protocol.
 - Rules are evaluated from top to bottom.
 - Host inbound traffic is handled by plugin-owned `UNRAID_FIREWALL4` and `UNRAID_FIREWALL6` chains.
