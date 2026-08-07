@@ -11,6 +11,7 @@ const CONFIG_FILE = CONFIG_DIR . '/unraid-firewall.cfg';
 const RULES4_FILE = CONFIG_DIR . '/ipv4.rules';
 const RULES6_FILE = CONFIG_DIR . '/ipv6.rules';
 const STATE_FILE = '/var/run/unraid-firewall.status';
+const LOG_FILE = '/var/log/unraid-firewall.log';
 
 function translateText(string $text): string
 {
@@ -21,6 +22,20 @@ function translateText(string $text): string
     }
 
     return $text;
+}
+
+function firewallLog(string $message): void
+{
+    $message = preg_replace('/[\r\n]+/', ' ', trim($message)) ?? '';
+    if ($message === '') {
+        return;
+    }
+
+    @file_put_contents(
+        LOG_FILE,
+        date('Y-m-d H:i:s') . ' ' . $message . PHP_EOL,
+        FILE_APPEND | LOCK_EX
+    );
 }
 
 function defaultConfig(): array

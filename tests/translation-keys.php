@@ -32,6 +32,8 @@ $requiredKeys = [
     'Last apply state',
     'Applying firewall rules',
     'The firewall rules could not be applied',
+    'The WebUI could not contact the firewall service',
+    'The firewall request timed out',
     'Firewall rules applied',
 ];
 

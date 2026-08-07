@@ -45,5 +45,7 @@ Error applying rules=应用规则时出错
 Unknown=未知
 Applying firewall rules=正在应用防火墙规则……
 The firewall rules could not be applied=无法应用防火墙规则。
+The WebUI could not contact the firewall service=WebUI 无法连接防火墙服务。
+The firewall request timed out=防火墙请求超时。
 Firewall rules applied=防火墙规则已应用。
 Firewall rules saved and applied=防火墙规则已保存并应用。

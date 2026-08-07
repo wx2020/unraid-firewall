@@ -459,6 +459,8 @@ apply_rules() {
     local result=0
     local docker_result=0
 
+    log "Applying firewall policy."
+
     enabled="$(read_setting ENABLED 0)"
     ipv4_enabled="$(read_setting IPV4_ENABLED 1)"
     ipv6_enabled="$(read_setting IPV6_ENABLED 1)"
@@ -534,7 +536,11 @@ run_locked() {
     # still perform the operation rather than making the plugin unusable.
     if command -v flock >/dev/null 2>&1; then
         exec 9>"$lock_file"
-        flock -x 9
+        if ! flock -x -w 10 9; then
+            set_state error
+            log "Timed out waiting for another firewall operation to finish."
+            return 1
+        fi
     fi
 
     case "$operation" in
